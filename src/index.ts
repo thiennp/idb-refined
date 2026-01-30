@@ -1,6 +1,8 @@
-export { createClient } from "./client.js";
+export { createIdb } from "./client.js";
 export type {
-  CreateClientOptions,
   IdbRefinedClient,
+  IdbRefinedOptions,
   StoredValue,
+  WorkerMessage,
+  WorkerResponse,
 } from "./client.js";

@@ -11,13 +11,17 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./worker": {
+      "import": "./dist/worker.js",
+      "default": "./dist/worker.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsc -p tsconfig.build.json && esbuild src/worker.ts --bundle --format=esm --outfile=dist/worker.js --platform=browser",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "format": "prettier --write \"src/**/*.ts\"",
@@ -39,6 +43,7 @@
     "@commitlint/cli": "^19.8.1",
     "@commitlint/config-conventional": "^19.8.1",
     "@eslint/js": "^9.39.2",
+    "esbuild": "^0.24.2",
     "eslint": "^9.39.2",
     "eslint-config-prettier": "^9.1.2",
     "fake-indexeddb": "^6.2.5",

@@ -2,11 +2,11 @@
  * Example: using idb-refined in the browser.
  * Run from project root: pnpm build && npx serve .  then open http://localhost:3000/example/
  */
-import { createClient } from "idb-refined";
+import { createIdb } from "idb-refined";
 
 async function run() {
   const dbName = "idb-refined-example";
-  const client = createClient({ dbName });
+  const client = await createIdb({ dbName });
 
   console.log("--- set ---");
   await client.set({ id: "1", name: "Alice", role: "admin" });

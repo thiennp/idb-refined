@@ -1,16 +1,16 @@
 # Advanced documentation
 
-Details for **idb-refined** and its single export: **createClient**.
+Details for **idb-refined** and its single export: **createIdb**.
 
 ---
 
 ## Type-safe usage
 
-Pass a generic to `createClient<T>` so `set`, `get`, and `update` use your value shape:
+Pass a generic to `createIdb<T>` so `set`, `get`, and `update` use your value shape:
 
 ```ts
 type Item = { id: string; name: string; createdAt?: number; expiresAt?: number };
-const client = createClient<Item>({ dbName: "my-db" });
+const client = await createIdb<Item>({ dbName: "my-db" });
 await client.set({ id: "1", name: "x" });
 const item = await client.get("1"); // Item | undefined
 await client.update("1", { name: "y" });
@@ -20,16 +20,18 @@ await client.update("1", { name: "y" });
 
 ---
 
-## createClient(options)
+## createIdb(options, workerUrl?)
 
-Creates a client bound to a database. Init, schema, cleanup and eviction are handled internally.
+Creates a client bound to a database. Uses a Web Worker by default (browser); worker URL is auto-generated. Init, schema, cleanup and eviction are handled internally.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `options.dbName` | `string` | Yes | Database name. |
 | `options.storeName` | `string` | No | Object store name. Omitted, `"store"` is used. |
+| `options.ttlMs` | `number` | No | Default TTL in ms for values without `expiresAt`. Omitted, 3600000 (1 hour) is used. |
+| `workerUrl` | `string \| URL` | No | Worker script URL. Omitted, resolved from same directory as the library; pass when bundling (e.g. `new URL('idb-refined/worker', import.meta.url)`). |
 
-**Returns:** `IdbRefinedClient<T>`, i.e. `{ set, get, update, delete, deleteDb }`. When a generic is passed, methods are typed accordingly.
+**Returns:** `Promise<IdbRefinedClient<T>>`, i.e. `{ set, get, update, delete, deleteDb }`. When a generic is passed, methods are typed accordingly.
 
 **Internal behavior:**
 
@@ -45,11 +47,11 @@ Stores a value. Cleanup and eviction run after each set.
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `value` | `T` | Yes | Object to store. Must have an `id` property. When using `createClient<T>`, must match `T`. |
+| `value` | `T` | Yes | Object to store. Must have an `id` property. When using `createIdb<T>`, must match `T`. |
 
 **Behavior:**
 
-- Sets `createdAt` and `expiresAt` on the value if missing (`expiresAt` = now + 1 hour).
+- Sets `createdAt` and `expiresAt` on the value if missing (`expiresAt` = now + `ttlMs` from options, default 1 hour).
 - Puts the value into the store.
 - If store count exceeds 1000, evicts oldest entries by `createdAt`.
 - Deletes entries where `expiresAt` &lt; now.
@@ -66,7 +68,7 @@ Returns the value for the given key, or `undefined` if not found.
 |-----------|------|----------|-------------|
 | `key` | `IDBValidKey` | Yes | Key of the entry to get. |
 
-**Returns:** `Promise<T | undefined>`. When using `createClient<T>`, the result is typed as `T`.
+**Returns:** `Promise<T | undefined>`. When using `createIdb<T>`, the result is typed as `T`.
 
 **Reference:** [IDBObjectStore.get](https://developer.mozilla.org/en-US/docs/Web/API/IDBObjectStore/get).
 
@@ -79,7 +81,7 @@ Updates an existing entry. The value is stored with the given key (and keyPath `
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
 | `key` | `IDBValidKey` | Yes | Key of the entry to update. |
-| `value` | `Partial<T>` | Yes | Fields to update. The client sets `id` to `key` before put. When using `createClient<T>`, partial of `T`. |
+| `value` | `Partial<T>` | Yes | Fields to update. The client sets `id` to `key` before put. When using `createIdb<T>`, partial of `T`. |
 
 **Reference:** Same as put in IndexedDB; put overwrites by key.
 
@@ -107,7 +109,7 @@ Closes the cached connection (if any) and deletes the database from disk.
 
 ## Use cases
 
-- **Simple key-value cache:** `createClient({ dbName })` then `set` / `get` / `update` / `delete`. Expiry and size cap (1000 entries) are automatic.
+- **Simple key-value cache:** `await createIdb({ dbName, ttlMs })` then `set` / `get` / `update` / `delete`. Expiry and size cap (1000 entries) are automatic.
 - **App storage:** One DB per app; set/get/update/delete by id; call `deleteDb` to wipe (e.g. logout).
 
 ---

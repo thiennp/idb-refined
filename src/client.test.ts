@@ -1,16 +1,16 @@
 import { describe, it, expect } from "vitest";
 import { openDB, deleteDB } from "idb";
-import { createClient } from "./client.js";
+import { createIdb } from "./client.js";
 
 function uniqueDbName(): string {
   return `client-test-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
-describe("createClient", () => {
+describe("createIdb", () => {
   describe("set", () => {
     it("stores value without throwing", async () => {
       const dbName = uniqueDbName();
-      const { set, deleteDb } = createClient({ dbName });
+      const { set, deleteDb } = await createIdb({ dbName });
       await set({ id: "a", name: "Alice" });
       await deleteDb();
       await deleteDB(dbName);
@@ -20,18 +20,20 @@ describe("createClient", () => {
   describe("get", () => {
     it("returns value by key", async () => {
       const dbName = uniqueDbName();
-      const { set, get, deleteDb } = createClient({ dbName });
+      const { set, get, deleteDb } = await createIdb({ dbName });
       await set({ id: "x", name: "Bob" });
       const stored = await get("x");
       expect(stored).toBeDefined();
-      expect((stored as { id: string }).id).toBe("x");
-      expect((stored as { name: string }).name).toBe("Bob");
+      expect((stored as unknown as { id: string; name: string }).id).toBe("x");
+      expect((stored as unknown as { id: string; name: string }).name).toBe(
+        "Bob"
+      );
       await deleteDb();
     });
 
     it("returns undefined for missing key", async () => {
       const dbName = uniqueDbName();
-      const { set, get, deleteDb } = createClient({ dbName });
+      const { set, get, deleteDb } = await createIdb({ dbName });
       await set({ id: "a", name: "Alice" });
       const stored = await get("missing");
       expect(stored).toBeUndefined();
@@ -42,7 +44,7 @@ describe("createClient", () => {
   describe("update", () => {
     it("updates existing entry", async () => {
       const dbName = uniqueDbName();
-      const { set, update, deleteDb } = createClient({ dbName });
+      const { set, update, deleteDb } = await createIdb({ dbName });
       await set({ id: "1", name: "Old" });
       await update("1", { id: "1", name: "New", createdAt: 0, expiresAt: 999 });
 
@@ -58,7 +60,7 @@ describe("createClient", () => {
   describe("delete", () => {
     it("deletes entry by key", async () => {
       const dbName = uniqueDbName();
-      const { set, delete: del, deleteDb } = createClient({ dbName });
+      const { set, delete: del, deleteDb } = await createIdb({ dbName });
       await set({ id: "x", data: 1 });
       await del("x");
 
@@ -73,7 +75,7 @@ describe("createClient", () => {
   describe("deleteDb", () => {
     it("deletes the database", async () => {
       const dbName = uniqueDbName();
-      const { set, deleteDb } = createClient({ dbName });
+      const { set, deleteDb } = await createIdb({ dbName });
       await set({ id: "y", data: 1 });
       await deleteDb();
 

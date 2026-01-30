@@ -14,7 +14,7 @@ npm install idb-refined
 
 | Export | Purpose |
 |--------|---------|
-| **createClient(options)** | Returns `{ set, get, update, delete, deleteDb }`. Options: `dbName` (required), `storeName` (optional). |
+| **createIdb(options, workerUrl?)** | Returns a Promise of `{ set, get, update, delete, deleteDb }`. Uses a Web Worker by default (browser); worker URL is auto-generated. Options: `dbName` (required), `storeName` (optional), `ttlMs` (optional, default 3600000). Pass `workerUrl` only when bundling requires it. |
 | **set(value)** | Store a value. Value must have an `id` property. Expiry and eviction run automatically. |
 | **get(key)** | Get a value by key. Returns `undefined` if not found. |
 | **update(key, value)** | Update an existing entry by key. |
@@ -26,11 +26,14 @@ For details, see **[Advanced documentation](docs/advanced.md)**. Run the **[exam
 ## Example
 
 ```ts
-import { createClient } from "idb-refined";
+import { createIdb } from "idb-refined";
 
 // Optional: type the stored value for set/get/update
 type User = { id: string; name: string; createdAt?: number; expiresAt?: number };
-const { set, get, update, delete: del, deleteDb } = createClient<User>({ dbName: "my-app" });
+const { set, get, update, delete: del, deleteDb } = await createIdb<User>({
+  dbName: "my-app",
+  ttlMs: 3600_000, // optional: 1 hour default TTL
+});
 
 await set({ id: "1", name: "Alice" });
 const value = await get("1"); // User | undefined
@@ -55,8 +58,9 @@ await deleteDb();
 ## Under the hood
 
 - **Schema & versioning** — A single store (and indexes on `expiresAt`, `createdAt`) is created or upgraded automatically; version bumps are derived from a schema fingerprint so you don’t manage versions by hand.
-- **Cleanup** — After each `set`, entries with `expiresAt` in the past are removed (so TTL/expiry “just works”).
-- **Eviction** — If the store grows beyond `maxCount` (default 1000), the oldest entries by `createdAt` are deleted until the cap is met.
+- **Cleanup** — Expired entries (`expiresAt` in the past) are removed before and after each `set`, so TTL “just works” and there’s room to add.
+- **Eviction** — If the store is at or over `maxCount` (default 1000), the oldest entries by `createdAt` are evicted *before* the add, then again after if needed, so the store stays under the cap and adds don’t run out of space.
+- **Web Worker** — `createIdb` runs all of the above (schema, cleanup, eviction, put/get/update/delete) inside a Web Worker by default. The worker URL is auto-generated; the main thread only sends messages and receives results, so heavy I/O and bookkeeping stay off the UI thread.
 
 ## License
 

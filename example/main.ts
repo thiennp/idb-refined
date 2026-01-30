@@ -2,7 +2,7 @@
  * Example: using idb-refined in the browser (TypeScript).
  * Run: pnpm example
  */
-import { createClient } from "idb-refined";
+import { createIdb } from "idb-refined";
 
 type User = {
   id: string;
@@ -14,7 +14,7 @@ type User = {
 
 async function run(): Promise<void> {
   const dbName = "idb-refined-example";
-  const client = createClient<User>({ dbName });
+  const client = await createIdb<User>({ dbName });
 
   console.log("--- set ---");
   await client.set({ id: "1", name: "Alice", role: "admin" });
