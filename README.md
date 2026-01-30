@@ -98,6 +98,14 @@ console.log(`Evicted ${deleted} entries`);
 
 - Eviction is **count-based** only (no byte-size or quota check).
 
+## Releasing
+
+1. Bump version: `pnpm version patch` (or `minor` / `major`).
+2. Commit and push: `git push && git push --tags`.
+3. Pushing a tag matching `v*` (e.g. `v0.0.2`) triggers the [Publish to npm](.github/workflows/publish.yml) workflow, which runs build and `pnpm publish`.
+
+**Required:** Add an `NPM_TOKEN` secret in the repo (Settings → Secrets and variables → Actions). Use an npm [access token](https://www.npmjs.com/settings/~/tokens) or granular token with publish permission.
+
 ## License
 
 MIT

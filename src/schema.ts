@@ -34,7 +34,10 @@ export function fingerprint(schema: SchemaDef): string {
           : Object.fromEntries(
               Object.keys(def.indexes as Record<string, string | string[]>)
                 .sort()
-                .map((k) => [k, (def.indexes as Record<string, string | string[]>)[k]])
+                .map((k) => [
+                  k,
+                  (def.indexes as Record<string, string | string[]>)[k],
+                ])
             );
     normalized[name] = {
       keyPath: def.keyPath,

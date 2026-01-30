@@ -50,9 +50,7 @@ async function initDbWithSchema(
     },
   });
 
-  const stored = (await metaDb.get(META_STORE, name)) as
-    | MetaRecord
-    | undefined;
+  const stored = (await metaDb.get(META_STORE, name)) as MetaRecord | undefined;
   metaDb.close();
 
   let currentVersion = 0;
@@ -69,14 +67,14 @@ async function initDbWithSchema(
     ? Math.max((stored?.version ?? 0) + 1, currentVersion + 1)
     : stored!.version;
 
-  const db = await openDB(name, newVersion, {
+  const db = (await openDB(name, newVersion, {
     upgrade(db, _oldVersion, _newVersion, transaction) {
       if (needUpgrade) {
         applySchema(db, schema, transaction);
       }
       customUpgrade?.(db as IDBPDatabase<unknown>);
     },
-  }) as IDBPDatabase<unknown>;
+  })) as IDBPDatabase<unknown>;
 
   if (needUpgrade) {
     const metaDb2 = await openDB(META_DB_NAME, 1);
