@@ -125,12 +125,12 @@ describe("putWithEviction", () => {
     const after = Date.now();
     const stored = await db.get("cache", "x");
     expect(stored).toBeDefined();
-    expect((stored as { expiresAt: number }).expiresAt).toBeGreaterThanOrEqual(
-      before + 60 * 1000
-    );
-    expect((stored as { expiresAt: number }).expiresAt).toBeLessThanOrEqual(
-      after + 60 * 1000 + 10
-    );
+    expect(
+      (stored as unknown as { expiresAt: number }).expiresAt
+    ).toBeGreaterThanOrEqual(before + 60 * 1000);
+    expect(
+      (stored as unknown as { expiresAt: number }).expiresAt
+    ).toBeLessThanOrEqual(after + 60 * 1000 + 10);
     db.close();
     await deleteDB(DB_NAME);
   });
@@ -157,7 +157,7 @@ describe("putWithEviction", () => {
       }
     );
     const stored = await db.get("cache", "y");
-    expect((stored as { expiresAt: number }).expiresAt).toBe(at);
+    expect((stored as unknown as { expiresAt: number }).expiresAt).toBe(at);
     db.close();
     await deleteDB(DB_NAME);
   });

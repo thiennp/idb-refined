@@ -49,7 +49,7 @@ describe("createIdb", () => {
       await set({ id: "b", name: "Bob" });
       const all = await getAll();
       expect(all).toHaveLength(2);
-      const ids = (all as { id: string }[]).map((x) => x.id).sort();
+      const ids = (all as unknown as { id: string }[]).map((x) => x.id).sort();
       expect(ids).toEqual(["a", "b"]);
       await deleteDb();
     });
@@ -92,8 +92,8 @@ describe("createIdb", () => {
       await set({ id: "2", name: "Two" });
       const results = await getMany(["1", "2", "missing"]);
       expect(results).toHaveLength(3);
-      expect((results[0] as { name: string }).name).toBe("One");
-      expect((results[1] as { name: string }).name).toBe("Two");
+      expect((results[0] as unknown as { name: string }).name).toBe("One");
+      expect((results[1] as unknown as { name: string }).name).toBe("Two");
       expect(results[2]).toBeUndefined();
       await deleteDb();
     });
@@ -119,7 +119,7 @@ describe("createIdb", () => {
       const stored = await db.get("store", "1");
       db.close();
       expect(stored).toBeDefined();
-      expect((stored as { name: string }).name).toBe("New");
+      expect((stored as unknown as { name: string }).name).toBe("New");
       await deleteDb();
     });
 
@@ -134,9 +134,11 @@ describe("createIdb", () => {
       await update("1", { name: "Alice Updated" });
       const stored = await get("1");
       expect(stored).toBeDefined();
-      expect((stored as { id: string }).id).toBe("1");
-      expect((stored as { name: string }).name).toBe("Alice Updated");
-      expect((stored as { role: string }).role).toBe("admin");
+      expect((stored as unknown as { id: string }).id).toBe("1");
+      expect((stored as unknown as { name: string }).name).toBe(
+        "Alice Updated"
+      );
+      expect((stored as unknown as { role: string }).role).toBe("admin");
       await deleteDb();
     });
   });
@@ -158,9 +160,9 @@ describe("createIdb", () => {
       const u = await users.get("u1");
       const s = await sessions.get("s1");
       expect(u).toBeDefined();
-      expect((u as { name: string }).name).toBe("Alice");
+      expect((u as unknown as { name: string }).name).toBe("Alice");
       expect(s).toBeDefined();
-      expect((s as { token: string }).token).toBe("abc");
+      expect((s as unknown as { token: string }).token).toBe("abc");
 
       await users.deleteDb();
     });
@@ -208,7 +210,7 @@ describe("createIdb", () => {
       await client2.set({ id: "b", data: 2 });
       const got = await client2.get("b");
       expect(got).toBeDefined();
-      expect((got as { id: string }).id).toBe("b");
+      expect((got as unknown as { id: string }).id).toBe("b");
       await client2.deleteDb();
       await deleteDB(dbName);
     });
