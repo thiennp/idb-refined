@@ -2,6 +2,8 @@
 
 Browser example for **idb-refined**.
 
+From repo root you can run `pnpm example` to build and open the example in the browser.
+
 ## Run
 
 1. Build the library from the project root:

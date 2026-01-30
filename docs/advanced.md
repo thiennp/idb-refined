@@ -1,6 +1,6 @@
 # Advanced documentation
 
-Details for **idb-refined** and its single export: **createIdb**.
+Details for **idb-refined**: **createIdb** and optional low-level helpers for custom flows.
 
 ---
 
@@ -32,7 +32,7 @@ Creates a client bound to a database. Uses a Web Worker by default (browser); wo
 | `options.maxCount` | `number` | No | Max entries before eviction. Omitted, 1000 is used. |
 | `workerUrl` | `string \| URL` | No | Worker script URL. Omitted, resolved from same directory as the library; pass when bundling (e.g. `new URL('idb-refined/worker', import.meta.url)`). The `idb-refined/worker` subpath is a script entry only (for the Worker constructor), not for importing types. |
 
-**Returns:** `Promise<IdbRefinedClient<T>>`, i.e. `{ set, get, update, delete, deleteDb }`. When a generic is passed, methods are typed accordingly.
+**Returns:** `Promise<IdbRefinedClient<T>>`, i.e. `{ set, get, getAll, keys, getMany, update, delete, deleteDb }`. When a generic is passed, methods are typed accordingly.
 
 **Internal behavior:**
 
@@ -75,6 +75,38 @@ Returns the value for the given key, or `undefined` if not found.
 
 ---
 
+## getAll()
+
+Returns all values in the store.
+
+**Returns:** `Promise<T[]>`. When using `createIdb<T>`, the result is typed as `T[]`.
+
+**Reference:** [IDBObjectStore.getAll](https://developer.mozilla.org/en-US/docs/Web/API/IDBObjectStore/getAll).
+
+---
+
+## keys()
+
+Returns all keys in the store.
+
+**Returns:** `Promise<IDBValidKey[]>`.
+
+**Reference:** [IDBObjectStore.getAllKeys](https://developer.mozilla.org/en-US/docs/Web/API/IDBObjectStore/getAllKeys).
+
+---
+
+## getMany(keys)
+
+Returns values for the given keys. The result array is aligned with the input: `result[i]` corresponds to `keys[i]`; `undefined` where the key is missing.
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `keys` | `IDBValidKey[]` | Yes | Keys to fetch. |
+
+**Returns:** `Promise<(T | undefined)[]>` (array aligned with input; `undefined` where key is missing).
+
+---
+
 ## update(key, value)
 
 Merges the given fields into the existing entry. **Other fields on the record are preserved.** If no entry exists for the key, the result is the partial plus `id: key`.
@@ -108,10 +140,49 @@ Closes the cached connection (if any) and deletes the database from disk.
 
 ---
 
+## Bundling {#bundling}
+
+When using Vite or Webpack the worker URL may not resolve; pass `workerUrl` explicitly.
+
+**Vite:**
+
+```ts
+const client = await createIdb(
+  { dbName: "my-app" },
+  new URL("idb-refined/worker", import.meta.url)
+);
+```
+
+**Webpack 5:** The path depends on your config. Ensure the worker script resolves (e.g. `new URL("./node_modules/idb-refined/dist/worker.js", import.meta.url)` or expose `idb-refined/worker` in your bundler). If the worker fails to load, pass `workerUrl`; see above.
+
+---
+
+## Advanced: low-level helpers
+
+When you have a raw `IDBPDatabase` (e.g. from another library or from opening the DB yourself), you can use:
+
+- **deleteByKey(db, storeName, key)** — Delete a single entry by key.
+- **clearStore(db, storeName)** — Delete all entries in a store.
+- **putWithEviction(db, storeName, value, options)** — Put a value and evict oldest by `dateKey` when count exceeds `maxCount`. Options: `dateKey`, `maxCount`, `expiresAt`, `ttlSeconds`, `key`. Mutates `value` with the date field when it is an object.
+
+Import from the package: `import { deleteByKey, clearStore, putWithEviction } from "idb-refined";`. Use these for custom flows (e.g. manual schema, multiple stores) where you don’t use `createIdb`.
+
+---
+
 ## Use cases
 
 - **Simple key-value cache:** `await createIdb({ dbName, ttlMs, maxCount })` then `set` / `get` / `update` / `delete`. Expiry and size cap (default 1000 entries) are automatic.
 - **App storage:** One DB per app; set/get/update/delete by id; call `deleteDb` to wipe (e.g. logout).
+
+---
+
+## Troubleshooting
+
+- **Worker fails to load:** Pass `workerUrl` explicitly; see [Bundling](#bundling).
+- **IndexedDB unavailable:** In private browsing or when disabled, `createIdb` or operations may throw. Handle in your app or feature-detect IndexedDB before use.
+- **Quota exceeded:** The browser may throw when storage is full. The library evicts by `maxCount`; reducing `maxCount` or calling `deleteDb` and re-creating can help. Catch and surface the error in your app.
+- **Worker hangs:** If the worker never responds, `set`/`get`/etc. never resolve. Consider wrapping calls in `Promise.race` with a timeout and recreating the client on timeout.
+- **Testing:** CI tests run in Node with fake-indexeddb; `Worker` is undefined, so only the main-thread path is tested. The worker path is exercised when running the example in a real browser.
 
 ---
 

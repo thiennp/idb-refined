@@ -1,6 +1,6 @@
 import type { IDBPDatabase } from "idb";
 import { deleteDB } from "idb";
-import { initDb } from "./initDb.js";
+import { clearMetaForDb, initDb } from "./initDb.js";
 import { cleanOldEntries } from "./cleanOldEntries.js";
 import { cleanWhenTooLarge } from "./cleanWhenTooLarge.js";
 import type { SchemaDef } from "./schema.js";
@@ -109,6 +109,34 @@ export async function executeGet<T>(
   return (await db.get(storeName, key)) as T | undefined;
 }
 
+export async function executeGetAll<T>(
+  dbName: string,
+  storeName: string
+): Promise<T[]> {
+  const db = await getDb(dbName, storeName);
+  return (await db.getAll(storeName)) as T[];
+}
+
+export async function executeKeys(
+  dbName: string,
+  storeName: string
+): Promise<IDBValidKey[]> {
+  const db = await getDb(dbName, storeName);
+  return db.getAllKeys(storeName);
+}
+
+export async function executeGetMany<T>(
+  dbName: string,
+  storeName: string,
+  keys: IDBValidKey[]
+): Promise<(T | undefined)[]> {
+  const db = await getDb(dbName, storeName);
+  const results = await Promise.all(
+    keys.map((key) => db.get(storeName, key) as Promise<T | undefined>)
+  );
+  return results;
+}
+
 export async function executeUpdate(
   dbName: string,
   storeName: string,
@@ -143,4 +171,5 @@ export async function executeDeleteDb(dbName: string): Promise<void> {
     dbCache.delete(dbName);
   }
   await deleteDB(dbName);
+  await clearMetaForDb(dbName);
 }

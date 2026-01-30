@@ -2,6 +2,9 @@ import {
   executeDelete as execDelete,
   executeDeleteDb as execDeleteDb,
   executeGet as execGet,
+  executeGetAll as execGetAll,
+  executeGetMany as execGetMany,
+  executeKeys as execKeys,
   executeSet as execSet,
   executeUpdate as execUpdate,
 } from "./clientCore.js";
@@ -23,13 +26,16 @@ export type StoredValue = Record<string, unknown> & { id: IDBValidKey };
 export interface IdbRefinedClient<T extends StoredValue = StoredValue> {
   set: (value: T) => Promise<void>;
   get: (key: IDBValidKey) => Promise<T | undefined>;
+  getAll: () => Promise<T[]>;
+  keys: () => Promise<IDBValidKey[]>;
+  getMany: (keys: IDBValidKey[]) => Promise<(T | undefined)[]>;
   update: (key: IDBValidKey, value: Partial<T>) => Promise<void>;
   delete: (key: IDBValidKey) => Promise<void>;
   deleteDb: () => Promise<void>;
 }
 
-export type { WorkerMessage, WorkerResponse } from "./workerProtocol.js";
 import type { WorkerMessage, WorkerResponse } from "./workerProtocol.js";
+export type { WorkerMessage, WorkerResponse };
 
 function mainThreadClient<T extends StoredValue>(
   dbName: string,
@@ -46,6 +52,15 @@ function mainThreadClient<T extends StoredValue>(
     },
     async get(key: IDBValidKey) {
       return execGet<T>(dbName, storeName, key);
+    },
+    async getAll() {
+      return execGetAll<T>(dbName, storeName);
+    },
+    async keys() {
+      return execKeys(dbName, storeName);
+    },
+    async getMany(keys: IDBValidKey[]) {
+      return execGetMany<T>(dbName, storeName, keys);
     },
     async update(key: IDBValidKey, value: Partial<T>) {
       await execUpdate(
@@ -140,6 +155,15 @@ export async function createIdb<T extends StoredValue = StoredValue>(
     },
     async get(key: IDBValidKey) {
       return send<T | undefined>("get", key);
+    },
+    async getAll() {
+      return send<T[]>("getAll");
+    },
+    async keys() {
+      return send<IDBValidKey[]>("keys");
+    },
+    async getMany(keys: IDBValidKey[]) {
+      return send<(T | undefined)[]>("getMany", keys);
     },
     async update(key: IDBValidKey, value: Partial<T>) {
       await send<void>("update", { key, value });

@@ -51,7 +51,6 @@ async function initDbWithSchema(
   });
 
   const stored = (await metaDb.get(META_STORE, name)) as MetaRecord | undefined;
-  metaDb.close();
 
   let currentVersion = 0;
   try {
@@ -77,14 +76,28 @@ async function initDbWithSchema(
   })) as IDBPDatabase<unknown>;
 
   if (needUpgrade) {
-    const metaDb2 = await openDB(META_DB_NAME, 1);
-    await metaDb2.put(META_STORE, {
+    await metaDb.put(META_STORE, {
       dbName: name,
       schemaFingerprint: fp,
       version: newVersion,
     });
-    metaDb2.close();
   }
+  metaDb.close();
 
   return db;
+}
+
+/**
+ * Remove the meta row for a database (e.g. after deleteDB). Keeps the meta DB from growing.
+ */
+export async function clearMetaForDb(dbName: string): Promise<void> {
+  const metaDb = await openDB(META_DB_NAME, 1, {
+    upgrade(db) {
+      if (!db.objectStoreNames.contains(META_STORE)) {
+        db.createObjectStore(META_STORE, { keyPath: "dbName" });
+      }
+    },
+  });
+  await metaDb.delete(META_STORE, dbName);
+  metaDb.close();
 }

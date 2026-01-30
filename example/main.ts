@@ -25,6 +25,13 @@ async function run(): Promise<void> {
   const one = await client.get("1");
   console.log("get('1'):", one);
 
+  console.log("--- getAll / keys / getMany ---");
+  const all = await client.getAll();
+  const keyList = await client.keys();
+  const many = await client.getMany(["1", "2"]);
+  console.log("getAll():", all.length, "items; keys():", keyList);
+  console.log("getMany(['1','2']):", many);
+
   console.log("--- update ---");
   await client.update("1", { name: "Alice Updated" });
   const updated = await client.get("1");

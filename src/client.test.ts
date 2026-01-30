@@ -41,6 +41,73 @@ describe("createIdb", () => {
     });
   });
 
+  describe("getAll", () => {
+    it("returns all values in the store", async () => {
+      const dbName = uniqueDbName();
+      const { set, getAll, deleteDb } = await createIdb({ dbName });
+      await set({ id: "a", name: "Alice" });
+      await set({ id: "b", name: "Bob" });
+      const all = await getAll();
+      expect(all).toHaveLength(2);
+      const ids = (all as { id: string }[]).map((x) => x.id).sort();
+      expect(ids).toEqual(["a", "b"]);
+      await deleteDb();
+    });
+
+    it("returns empty array when store is empty", async () => {
+      const dbName = uniqueDbName();
+      const { getAll, deleteDb } = await createIdb({ dbName });
+      const all = await getAll();
+      expect(all).toEqual([]);
+      await deleteDb();
+    });
+  });
+
+  describe("keys", () => {
+    it("returns all keys in the store", async () => {
+      const dbName = uniqueDbName();
+      const { set, keys, deleteDb } = await createIdb({ dbName });
+      await set({ id: "x", data: 1 });
+      await set({ id: "y", data: 2 });
+      const keyList = await keys();
+      expect(keyList).toHaveLength(2);
+      expect(keyList.sort()).toEqual(["x", "y"]);
+      await deleteDb();
+    });
+
+    it("returns empty array when store is empty", async () => {
+      const dbName = uniqueDbName();
+      const { keys, deleteDb } = await createIdb({ dbName });
+      const keyList = await keys();
+      expect(keyList).toEqual([]);
+      await deleteDb();
+    });
+  });
+
+  describe("getMany", () => {
+    it("returns values for multiple keys (undefined where missing)", async () => {
+      const dbName = uniqueDbName();
+      const { set, getMany, deleteDb } = await createIdb({ dbName });
+      await set({ id: "1", name: "One" });
+      await set({ id: "2", name: "Two" });
+      const results = await getMany(["1", "2", "missing"]);
+      expect(results).toHaveLength(3);
+      expect((results[0] as { name: string }).name).toBe("One");
+      expect((results[1] as { name: string }).name).toBe("Two");
+      expect(results[2]).toBeUndefined();
+      await deleteDb();
+    });
+
+    it("returns empty array for empty keys input", async () => {
+      const dbName = uniqueDbName();
+      const { set, getMany, deleteDb } = await createIdb({ dbName });
+      await set({ id: "a", data: 1 });
+      const results = await getMany([]);
+      expect(results).toEqual([]);
+      await deleteDb();
+    });
+  });
+
   describe("update", () => {
     it("updates existing entry", async () => {
       const dbName = uniqueDbName();
@@ -128,6 +195,21 @@ describe("createIdb", () => {
       });
       expect(await db.count("store")).toBe(0);
       db.close();
+      await deleteDB(dbName);
+    });
+
+    it("allows reusing same dbName after deleteDb (meta cleared)", async () => {
+      const dbName = uniqueDbName();
+      const client1 = await createIdb({ dbName });
+      await client1.set({ id: "a", data: 1 });
+      await client1.deleteDb();
+
+      const client2 = await createIdb({ dbName });
+      await client2.set({ id: "b", data: 2 });
+      const got = await client2.get("b");
+      expect(got).toBeDefined();
+      expect((got as { id: string }).id).toBe("b");
+      await client2.deleteDb();
       await deleteDB(dbName);
     });
   });

@@ -1,6 +1,6 @@
 # idb-refined
 
-Minimal IndexedDB client on top of [idb](https://www.npmjs.com/package/idb). Exposes **set**, **get**, **update**, **delete**, and **deleteDb**. Init, schema, cleanup and eviction run automatically.
+Minimal IndexedDB client on top of [idb](https://www.npmjs.com/package/idb). Exposes **set**, **get**, **update**, **delete**, and **deleteDb**. Init, schema, cleanup and eviction run automatically. See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## Install
 
@@ -10,13 +10,20 @@ pnpm add idb-refined
 npm install idb-refined
 ```
 
+## When to use
+
+Good for: key-value cache with TTL and eviction, offline storage, simple app storage by id. Not for: complex multi-index queries or raw IDB transactions—use [idb](https://www.npmjs.com/package/idb) or native IndexedDB instead.
+
 ## API
 
 | Export | Purpose |
 |--------|---------|
-| **createIdb(options, workerUrl?)** | Returns a Promise of `{ set, get, update, delete, deleteDb }`. Uses a Web Worker by default (browser); worker URL is auto-generated. Options: `dbName` (required), `storeName` (optional), `ttlMs` (optional, default 3600000), `maxCount` (optional, default 1000). Pass `workerUrl` only when bundling requires it. |
+| **createIdb(options, workerUrl?)** | Returns a Promise of `{ set, get, getAll, keys, getMany, update, delete, deleteDb }`. Uses a Web Worker by default (browser); worker URL is auto-generated. Options: `dbName` (required), `storeName` (optional), `ttlMs` (optional, default 3600000), `maxCount` (optional, default 1000). Pass `workerUrl` only when bundling requires it. |
 | **set(value)** | Store a value. Value must have an `id` property. The object is not mutated; expiry and eviction run automatically. |
 | **get(key)** | Get a value by key. Returns `undefined` if not found. |
+| **getAll()** | Get all values in the store. |
+| **keys()** | Get all keys in the store. |
+| **getMany(keys)** | Get values for multiple keys; returns array aligned with input (undefined where missing). |
 | **update(key, value)** | Merge partial fields into the existing entry by key (other fields preserved). |
 | **delete(key)** | Delete an entry by key. |
 | **deleteDb()** | Close the DB and delete it from disk. |
@@ -42,10 +49,33 @@ await del("1");
 await deleteDb();
 ```
 
+## Bundling
+
+With Vite or Webpack the worker URL may not resolve; pass `workerUrl` explicitly:
+
+**Vite:**
+
+```ts
+const client = await createIdb(
+  { dbName: "my-app" },
+  new URL("idb-refined/worker", import.meta.url)
+);
+```
+
+**Webpack 5:** Use a path that resolves to the worker script (e.g. `new URL("./node_modules/idb-refined/dist/worker.js", import.meta.url)` or configure your bundler to expose it). See [Bundling](docs/advanced.md#bundling) in the advanced docs.
+
 ## Requirements
 
 - Values must include an `id` property (used as the store key).
 - The library uses a single store (default name `"store"`) with indexes on `expiresAt` and `createdAt`. Cleanup and eviction run on set.
+- **Environment:** Requires IndexedDB (and Web Workers in the browser for worker mode). Works in modern browsers; tests use fake-indexeddb in Node.
+
+## Under the hood
+
+- **Schema & versioning** — A single store (and indexes on `expiresAt`, `createdAt`) is created or upgraded automatically; version bumps are derived from a schema fingerprint so you don’t manage versions by hand.
+- **Cleanup** — Expired entries (`expiresAt` in the past) are removed before and after each `set`, so TTL “just works” and there’s room to add.
+- **Eviction** — If the store is at or over `maxCount` (default 1000), the oldest entries by `createdAt` are evicted *before* the add, then again after if needed, so the store stays under the cap and adds don’t run out of space.
+- **Web Worker** — `createIdb` runs all of the above (schema, cleanup, eviction, put/get/update/delete) inside a Web Worker by default. The worker URL is auto-generated; the main thread only sends messages and receives results, so heavy I/O and bookkeeping stay off the UI thread.
 
 ## Releasing
 
@@ -54,13 +84,6 @@ await deleteDb();
 3. Pushing a tag matching `v*` triggers the [Publish to npm](.github/workflows/publish.yml) workflow.
 
 **Required:** Add an `NPM_TOKEN` secret in the repo (Settings → Secrets and variables → Actions).
-
-## Under the hood
-
-- **Schema & versioning** — A single store (and indexes on `expiresAt`, `createdAt`) is created or upgraded automatically; version bumps are derived from a schema fingerprint so you don’t manage versions by hand.
-- **Cleanup** — Expired entries (`expiresAt` in the past) are removed before and after each `set`, so TTL “just works” and there’s room to add.
-- **Eviction** — If the store is at or over `maxCount` (default 1000), the oldest entries by `createdAt` are evicted *before* the add, then again after if needed, so the store stays under the cap and adds don’t run out of space.
-- **Web Worker** — `createIdb` runs all of the above (schema, cleanup, eviction, put/get/update/delete) inside a Web Worker by default. The worker URL is auto-generated; the main thread only sends messages and receives results, so heavy I/O and bookkeeping stay off the UI thread.
 
 ## License
 

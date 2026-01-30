@@ -11,6 +11,9 @@ export type WorkerMessage =
     }
   | { type: "set"; id: number; payload: unknown }
   | { type: "get"; id: number; payload: IDBValidKey }
+  | { type: "getAll"; id: number; payload?: undefined }
+  | { type: "keys"; id: number; payload?: undefined }
+  | { type: "getMany"; id: number; payload: IDBValidKey[] }
   | {
       type: "update";
       id: number;

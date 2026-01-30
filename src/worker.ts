@@ -6,6 +6,9 @@ import {
   executeDelete,
   executeDeleteDb,
   executeGet,
+  executeGetAll,
+  executeGetMany,
+  executeKeys,
   executeSet,
   executeUpdate,
   getDb,
@@ -65,6 +68,25 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
           payload as IDBValidKey
         );
         respond(id, value);
+        break;
+      }
+      case "getAll": {
+        const values = await executeGetAll(dbName, storeName);
+        respond(id, values);
+        break;
+      }
+      case "keys": {
+        const keysResult = await executeKeys(dbName, storeName);
+        respond(id, keysResult);
+        break;
+      }
+      case "getMany": {
+        const values = await executeGetMany(
+          dbName,
+          storeName,
+          payload as IDBValidKey[]
+        );
+        respond(id, values);
         break;
       }
       case "update": {
