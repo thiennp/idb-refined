@@ -2,8 +2,11 @@ import type { IDBPDatabase } from "idb";
 
 export interface CleanWhenTooLargeOptions {
   dateKey: string;
-  maxCount: number;
+  /** Target max entries after eviction. */
+  maxCount?: number;
 }
+
+const DEFAULT_MAX_COUNT = 1000;
 
 /**
  * Evict oldest entries (by dateKey) until store count <= maxCount.
@@ -14,7 +17,8 @@ export async function cleanWhenTooLarge(
   storeName: string,
   options: CleanWhenTooLargeOptions
 ): Promise<number> {
-  const { dateKey, maxCount } = options;
+  const { dateKey } = options;
+  const maxCount = options.maxCount ?? DEFAULT_MAX_COUNT;
   const count = await db.count(storeName);
   if (count <= maxCount) return 0;
 

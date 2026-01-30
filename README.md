@@ -14,21 +14,15 @@ npm install idb-refined
 
 | Function | Purpose |
 |----------|---------|
-| **initDb(name, options?)** | Open or create a DB. Version is auto-detected when you pass a declarative `schema`; optional manual `version` + `upgrade`. Returns idb’s `IDBPDatabase`. |
-| **cleanOldEntries(db, storeName, options)** | Delete entries where `dateKey` &lt; `before` (timestamp ms). Options: `{ dateKey, before }`. Requires an index on `dateKey`. |
-| **cleanWhenTooLarge(db, storeName, options)** | Evict oldest entries (by `dateKey`) until count ≤ `maxCount`. Options: `{ dateKey, maxCount }`. Returns count deleted. |
-| **putWithEviction(db, storeName, value, options)** | Put value, then if store count &gt; `maxCount` evict oldest by `dateKey`. Options: `{ key?, dateKey, maxCount }`. |
+| **initDb(name, options?)** | Open or create a DB. Version is auto-detected when you pass a declarative `schema`; or use manual `version` and `upgrade`. Returns idb’s `IDBPDatabase`. |
+| **cleanOldEntries(db, storeName, options)** | Delete entries where `dateKey` &lt; `before` (timestamp ms). Requires an index on `dateKey`. |
+| **cleanWhenTooLarge(db, storeName, options)** | Evict oldest entries (by `dateKey`) until count ≤ `maxCount`. Returns count deleted. Requires an index on `dateKey`. `maxCount` is optional. |
+| **putWithEviction(db, storeName, value, options)** | Put value, then if store count &gt; `maxCount` evict oldest by `dateKey`. Options may include `expiresAt` (ms), `ttlSeconds` (seconds), and optional `maxCount`. |
 | **deleteByKey(db, storeName, key)** | Delete a single entry by key. |
 | **clearStore(db, storeName)** | Delete all entries in a store. |
 | **deleteDB(name)** | Re-export of idb’s `deleteDB`. |
 
-## Use cases
-
-- **Cache with TTL:** initDb, put items with `expiresAt`, call `cleanOldEntries` on startup or interval.
-- **Cache with max size:** Use `putWithEviction` or call `cleanWhenTooLarge` after adding.
-- **Cache with TTL + max size:** `putWithEviction` + periodic `cleanOldEntries` for expired.
-- **Log / event buffer:** `putWithEviction` with `dateKey: 'createdAt'` and `maxCount`.
-- **Simple key-value:** initDb, `db.get` / `db.put` / `deleteByKey`; optional cleanup when too large.
+For parameter details, behavior, and use-case explanations, see **[Advanced documentation](docs/advanced.md)**.
 
 ## Examples
 
@@ -45,57 +39,35 @@ const db = await initDb("my-cache", {
   },
 });
 
-// Add item; if store has more than 1000 entries, evict oldest
-await putWithEviction(
-  db,
-  "cache",
-  { id: "k1", data: "v1", expiresAt: Date.now() + 3600 },
-  { dateKey: "expiresAt", maxCount: 1000 }
-);
-
-// Periodic: remove expired
-await cleanOldEntries(db, "cache", {
+await putWithEviction(db, "cache", { id: "k1", data: "v1" }, {
   dateKey: "expiresAt",
-  before: Date.now(),
+  maxCount: 1000,
+  ttlSeconds: 3600,
 });
 
-// Delete one
+await cleanOldEntries(db, "cache", { dateKey: "expiresAt", before: Date.now() });
 await deleteByKey(db, "cache", "k1");
 ```
 
-### Log buffer (cap size)
+### Log buffer
 
 ```ts
-await putWithEviction(
-  db,
-  "logs",
-  { id: generateId(), message, createdAt: Date.now() },
-  { dateKey: "createdAt", maxCount: 5000 }
-);
+await putWithEviction(db, "logs", { id: generateId(), message }, {
+  dateKey: "createdAt",
+  maxCount: 5000,
+});
 ```
 
-### Manual cleanup when too large
+### Manual eviction
 
 ```ts
-const deleted = await cleanWhenTooLarge(db, "cache", {
-  dateKey: "expiresAt",
-  maxCount: 500,
-});
+const deleted = await cleanWhenTooLarge(db, "cache", { dateKey: "expiresAt", maxCount: 500 });
 console.log(`Evicted ${deleted} entries`);
 ```
 
 ## Requirements
 
-- Stores that use `cleanOldEntries`, `cleanWhenTooLarge`, or `putWithEviction` must have an **index** on the date field (e.g. `expiresAt`, `createdAt`). Define it in your schema:
-
-  ```ts
-  schema: {
-    stores: {
-      cache: { keyPath: "id", indexes: ["expiresAt"] },
-    },
-  }
-  ```
-
+- Stores used with `cleanOldEntries`, `cleanWhenTooLarge`, or `putWithEviction` must have an **index** on the date field (e.g. `expiresAt`, `createdAt`). Define it in your schema.
 - Eviction is **count-based** only (no byte-size or quota check).
 
 ## Releasing
