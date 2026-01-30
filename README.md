@@ -1,6 +1,6 @@
 # idb-refined
 
-Thin TypeScript IndexedDB helper on top of [idb](https://www.npmjs.com/package/idb): init DB with auto-version, clean by date or size, add with eviction, and delete helpers.
+Minimal IndexedDB client on top of [idb](https://www.npmjs.com/package/idb). Exposes **add**, **update**, **delete**, and **removeDb**. Init, schema, cleanup and eviction run automatically.
 
 ## Install
 
@@ -12,71 +12,45 @@ npm install idb-refined
 
 ## API
 
-| Function | Purpose |
-|----------|---------|
-| **initDb(name, options?)** | Open or create a DB. Version is auto-detected when you pass a declarative `schema`; or use manual `version` and `upgrade`. Returns idb’s `IDBPDatabase`. |
-| **cleanOldEntries(db, storeName, options)** | Delete entries where `dateKey` &lt; `before` (timestamp ms). Requires an index on `dateKey`. |
-| **cleanWhenTooLarge(db, storeName, options)** | Evict oldest entries (by `dateKey`) until count ≤ `maxCount`. Returns count deleted. Requires an index on `dateKey`. `maxCount` is optional. |
-| **putWithEviction(db, storeName, value, options)** | Put value, then if store count &gt; `maxCount` evict oldest by `dateKey`. Options may include `expiresAt` (ms), `ttlSeconds` (seconds), and optional `maxCount`. |
-| **deleteByKey(db, storeName, key)** | Delete a single entry by key. |
-| **clearStore(db, storeName)** | Delete all entries in a store. |
-| **deleteDB(name)** | Re-export of idb’s `deleteDB`. |
+| Export | Purpose |
+|--------|---------|
+| **createClient(options)** | Returns `{ set, get, update, delete, deleteDb }`. Options: `dbName` (required), `storeName` (optional). |
+| **set(value)** | Store a value. Value must have an `id` property. Expiry and eviction run automatically. |
+| **get(key)** | Get a value by key. Returns `undefined` if not found. |
+| **update(key, value)** | Update an existing entry by key. |
+| **delete(key)** | Delete an entry by key. |
+| **deleteDb()** | Close the DB and delete it from disk. |
 
-For parameter details, behavior, and use-case explanations, see **[Advanced documentation](docs/advanced.md)**.
+For details, see **[Advanced documentation](docs/advanced.md)**.
 
-## Examples
-
-### Cache with TTL and max size
+## Example
 
 ```ts
-import { initDb, putWithEviction, cleanOldEntries, deleteByKey } from "idb-refined";
+import { createClient } from "idb-refined";
 
-const db = await initDb("my-cache", {
-  schema: {
-    stores: {
-      cache: { keyPath: "id", indexes: ["expiresAt"] },
-    },
-  },
-});
+// Optional: type the stored value for set/get/update
+type User = { id: string; name: string; createdAt?: number; expiresAt?: number };
+const { set, get, update, delete: del, deleteDb } = createClient<User>({ dbName: "my-app" });
 
-await putWithEviction(db, "cache", { id: "k1", data: "v1" }, {
-  dateKey: "expiresAt",
-  maxCount: 1000,
-  ttlSeconds: 3600,
-});
-
-await cleanOldEntries(db, "cache", { dateKey: "expiresAt", before: Date.now() });
-await deleteByKey(db, "cache", "k1");
-```
-
-### Log buffer
-
-```ts
-await putWithEviction(db, "logs", { id: generateId(), message }, {
-  dateKey: "createdAt",
-  maxCount: 5000,
-});
-```
-
-### Manual eviction
-
-```ts
-const deleted = await cleanWhenTooLarge(db, "cache", { dateKey: "expiresAt", maxCount: 500 });
-console.log(`Evicted ${deleted} entries`);
+await set({ id: "1", name: "Alice" });
+const value = await get("1"); // User | undefined
+await update("1", { name: "Alice Updated" });
+await del("1");
+await deleteDb();
 ```
 
 ## Requirements
 
-- Stores used with `cleanOldEntries`, `cleanWhenTooLarge`, or `putWithEviction` must have an **index** on the date field (e.g. `expiresAt`, `createdAt`). Define it in your schema.
-- Eviction is **count-based** only (no byte-size or quota check).
+- Values must include an `id` property (used as the store key).
+- The library uses a single store (default name `"store"`) with indexes on `expiresAt` and `createdAt`. Cleanup and eviction run on set.
 
 ## Releasing
 
 1. Bump version: `pnpm version patch` (or `minor` / `major`).
 2. Commit and push: `git push && git push --tags`.
-3. Pushing a tag matching `v*` (e.g. `v0.0.2`) triggers the [Publish to npm](.github/workflows/publish.yml) workflow, which runs build and `pnpm publish`.
+3. Pushing a tag matching `v*` triggers the [Publish to npm](.github/workflows/publish.yml) workflow.
 
-**Required:** Add an `NPM_TOKEN` secret in the repo (Settings → Secrets and variables → Actions). Use an npm [access token](https://www.npmjs.com/settings/~/tokens) or granular token with publish permission.
+**Required:** Add an `NPM_TOKEN` secret in the repo (Settings → Secrets and variables → Actions).
 
 ## License
 

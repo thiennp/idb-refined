@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { openDB } from "idb";
-import { initDb, deleteDB } from "./index.js";
+import { openDB, deleteDB } from "idb";
+import { initDb } from "./initDb.js";
 
 function uniqueDbName(): string {
   return `deleteDB-test-${Date.now()}-${Math.random().toString(36).slice(2)}`;

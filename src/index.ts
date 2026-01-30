@@ -1,13 +1,6 @@
-export { initDb } from "./initDb.js";
-export type { InitDbOptions } from "./initDb.js";
-export { cleanOldEntries } from "./cleanOldEntries.js";
-export type { CleanOldEntriesOptions } from "./cleanOldEntries.js";
-export { cleanWhenTooLarge } from "./cleanWhenTooLarge.js";
-export type { CleanWhenTooLargeOptions } from "./cleanWhenTooLarge.js";
-export { putWithEviction } from "./putWithEviction.js";
-export type { PutWithEvictionOptions } from "./putWithEviction.js";
-export { deleteByKey, clearStore } from "./delete.js";
-export { deleteDB } from "idb";
-export type { IDBPDatabase, DBSchema } from "idb";
-export type { SchemaDef, StoreDef } from "./schema.js";
-export { fingerprint, applySchema } from "./schema.js";
+export { createClient } from "./client.js";
+export type {
+  CreateClientOptions,
+  IdbRefinedClient,
+  StoredValue,
+} from "./client.js";
