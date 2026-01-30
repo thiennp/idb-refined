@@ -21,7 +21,7 @@ npm install idb-refined
 | **delete(key)** | Delete an entry by key. |
 | **deleteDb()** | Close the DB and delete it from disk. |
 
-For details, see **[Advanced documentation](docs/advanced.md)**.
+For details, see **[Advanced documentation](docs/advanced.md)**. Run the **[example](example/)** in the browser (see `example/README.md`).
 
 ## Example
 
