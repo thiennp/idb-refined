@@ -1,6 +1,6 @@
 # idb-refined
 
-Minimal IndexedDB client on top of [idb](https://www.npmjs.com/package/idb). Exposes **add**, **update**, **delete**, and **removeDb**. Init, schema, cleanup and eviction run automatically.
+Minimal IndexedDB client on top of [idb](https://www.npmjs.com/package/idb). Exposes **set**, **get**, **update**, **delete**, and **deleteDb**. Init, schema, cleanup and eviction run automatically.
 
 ## Install
 
@@ -51,6 +51,12 @@ await deleteDb();
 3. Pushing a tag matching `v*` triggers the [Publish to npm](.github/workflows/publish.yml) workflow.
 
 **Required:** Add an `NPM_TOKEN` secret in the repo (Settings → Secrets and variables → Actions).
+
+## Under the hood
+
+- **Schema & versioning** — A single store (and indexes on `expiresAt`, `createdAt`) is created or upgraded automatically; version bumps are derived from a schema fingerprint so you don’t manage versions by hand.
+- **Cleanup** — After each `set`, entries with `expiresAt` in the past are removed (so TTL/expiry “just works”).
+- **Eviction** — If the store grows beyond `maxCount` (default 1000), the oldest entries by `createdAt` are deleted until the cap is met.
 
 ## License
 

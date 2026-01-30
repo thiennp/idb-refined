@@ -1,6 +1,6 @@
 {
   "name": "idb-refined",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "description": "Thin TypeScript IndexedDB helper: initDb (auto-version), clean by date/size, add with eviction, delete helpers",
   "type": "module",
   "main": "./dist/index.js",
