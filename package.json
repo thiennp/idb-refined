@@ -1,0 +1,29 @@
+{
+  "name": "idb-refined",
+  "version": "0.0.1",
+  "description": "Thin TypeScript IndexedDB helper: initDb (auto-version), clean by date/size, add with eviction, delete helpers",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "idb": "^8.0.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
+  "keywords": ["indexeddb", "idb", "cache", "browser", "storage"],
+  "license": "MIT"
+}
