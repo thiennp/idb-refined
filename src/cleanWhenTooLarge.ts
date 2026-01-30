@@ -1,12 +1,11 @@
 import type { IDBPDatabase } from "idb";
+import { DEFAULT_MAX_COUNT } from "./constants.js";
 
 export interface CleanWhenTooLargeOptions {
   dateKey: string;
   /** Target max entries after eviction. */
   maxCount?: number;
 }
-
-const DEFAULT_MAX_COUNT = 1000;
 
 /**
  * Evict oldest entries (by dateKey) until store count <= maxCount.

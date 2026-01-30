@@ -55,6 +55,48 @@ describe("createIdb", () => {
       expect((stored as { name: string }).name).toBe("New");
       await deleteDb();
     });
+
+    it("merges partial update with existing record (preserves other fields)", async () => {
+      const dbName = uniqueDbName();
+      const { set, get, update, deleteDb } = await createIdb({ dbName });
+      await set({
+        id: "1",
+        name: "Alice",
+        role: "admin",
+      });
+      await update("1", { name: "Alice Updated" });
+      const stored = await get("1");
+      expect(stored).toBeDefined();
+      expect((stored as { id: string }).id).toBe("1");
+      expect((stored as { name: string }).name).toBe("Alice Updated");
+      expect((stored as { role: string }).role).toBe("admin");
+      await deleteDb();
+    });
+  });
+
+  describe("same dbName, different storeName", () => {
+    it("uses separate stores when storeName differs", async () => {
+      const dbName = uniqueDbName();
+      const users = await createIdb<{ id: string; name: string }>({
+        dbName,
+        storeName: "users",
+      });
+      const sessions = await createIdb<{ id: string; token: string }>({
+        dbName,
+        storeName: "sessions",
+      });
+      await users.set({ id: "u1", name: "Alice" });
+      await sessions.set({ id: "s1", token: "abc" });
+
+      const u = await users.get("u1");
+      const s = await sessions.get("s1");
+      expect(u).toBeDefined();
+      expect((u as { name: string }).name).toBe("Alice");
+      expect(s).toBeDefined();
+      expect((s as { token: string }).token).toBe("abc");
+
+      await users.deleteDb();
+    });
   });
 
   describe("delete", () => {

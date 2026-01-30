@@ -15,6 +15,7 @@ import type { WorkerMessage, WorkerResponse } from "./workerProtocol.js";
 let dbName: string;
 let storeName: string;
 let ttlMs: number | undefined;
+let maxCount: number | undefined;
 
 function respond(id: number, result?: unknown, error?: string): void {
   const msg: WorkerResponse = error != null ? { id, error } : { id, result };
@@ -30,14 +31,17 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
           dbName: dn,
           storeName: sn,
           ttlMs: ttl,
+          maxCount: max,
         } = payload as {
           dbName: string;
           storeName: string;
           ttlMs?: number;
+          maxCount?: number;
         };
         dbName = dn;
         storeName = sn;
         ttlMs = ttl;
+        maxCount = max;
         await getDb(dbName, storeName);
         respond(id);
         break;
@@ -49,6 +53,7 @@ self.onmessage = async (e: MessageEvent<WorkerMessage>) => {
           payload as Record<string, unknown>,
           {
             ttlMs,
+            maxCount,
           }
         );
         respond(id);

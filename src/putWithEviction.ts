@@ -1,5 +1,6 @@
 import type { IDBPDatabase } from "idb";
 import { cleanWhenTooLarge } from "./cleanWhenTooLarge.js";
+import { DEFAULT_MAX_COUNT, DEFAULT_TTL_SECONDS } from "./constants.js";
 
 export interface PutWithEvictionOptions {
   key?: IDBValidKey;
@@ -11,9 +12,6 @@ export interface PutWithEvictionOptions {
   /** Relative expiry in seconds. Used when expiresAt is not set; then dateKey = now + ttlSeconds * 1000. */
   ttlSeconds?: number;
 }
-
-const DEFAULT_TTL_SECONDS = 3600;
-const DEFAULT_MAX_COUNT = 1000;
 
 /**
  * Put a value in the store, then if count > maxCount evict oldest entries (by dateKey).

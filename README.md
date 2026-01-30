@@ -14,14 +14,14 @@ npm install idb-refined
 
 | Export | Purpose |
 |--------|---------|
-| **createIdb(options, workerUrl?)** | Returns a Promise of `{ set, get, update, delete, deleteDb }`. Uses a Web Worker by default (browser); worker URL is auto-generated. Options: `dbName` (required), `storeName` (optional), `ttlMs` (optional, default 3600000). Pass `workerUrl` only when bundling requires it. |
-| **set(value)** | Store a value. Value must have an `id` property. Expiry and eviction run automatically. |
+| **createIdb(options, workerUrl?)** | Returns a Promise of `{ set, get, update, delete, deleteDb }`. Uses a Web Worker by default (browser); worker URL is auto-generated. Options: `dbName` (required), `storeName` (optional), `ttlMs` (optional, default 3600000), `maxCount` (optional, default 1000). Pass `workerUrl` only when bundling requires it. |
+| **set(value)** | Store a value. Value must have an `id` property. The object is not mutated; expiry and eviction run automatically. |
 | **get(key)** | Get a value by key. Returns `undefined` if not found. |
-| **update(key, value)** | Update an existing entry by key. |
+| **update(key, value)** | Merge partial fields into the existing entry by key (other fields preserved). |
 | **delete(key)** | Delete an entry by key. |
 | **deleteDb()** | Close the DB and delete it from disk. |
 
-For details, see **[Advanced documentation](docs/advanced.md)**. Run the **[example](example/)** in the browser (see `example/README.md`).
+For details, see **[Advanced documentation](docs/advanced.md)**. Run the **[example](example/)** in the browser (see `example/README.md`). The `idb-refined/worker` export is a script entry for the Worker constructor only (no types).
 
 ## Example
 

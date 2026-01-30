@@ -6,6 +6,7 @@ export type WorkerMessage =
         dbName: string;
         storeName: string;
         ttlMs?: number;
+        maxCount?: number;
       };
     }
   | { type: "set"; id: number; payload: unknown }

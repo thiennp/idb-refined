@@ -29,6 +29,14 @@ async function run(): Promise<void> {
   await client.update("1", { name: "Alice Updated" });
   const updated = await client.get("1");
   console.log("After update get('1'):", updated);
+  // update() merges: other fields (role, createdAt, expiresAt) are preserved
+  if (updated) {
+    console.log(
+      "  (merge preserved role:",
+      updated.role,
+      "; id/name/createdAt/expiresAt all present)"
+    );
+  }
 
   console.log("--- delete ---");
   await client.delete("2");

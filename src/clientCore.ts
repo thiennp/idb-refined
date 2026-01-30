@@ -4,34 +4,53 @@ import { initDb } from "./initDb.js";
 import { cleanOldEntries } from "./cleanOldEntries.js";
 import { cleanWhenTooLarge } from "./cleanWhenTooLarge.js";
 import type { SchemaDef } from "./schema.js";
+import { DEFAULT_MAX_COUNT, DEFAULT_TTL_MS } from "./constants.js";
+
+export { DEFAULT_TTL_MS } from "./constants.js";
 
 const DEFAULT_KEY_PATH = "id";
 const DATE_INDEXES = ["expiresAt", "createdAt"];
-export const DEFAULT_TTL_MS = 3600 * 1000;
-const DEFAULT_MAX_COUNT = 1000;
 
-const dbCache = new Map<string, IDBPDatabase<unknown>>();
+interface CachedDb {
+  db: IDBPDatabase<unknown>;
+  storeNames: Set<string>;
+}
 
-function getDefaultSchema(storeName: string): SchemaDef {
-  return {
-    stores: {
-      [storeName]: {
-        keyPath: DEFAULT_KEY_PATH,
-        indexes: DATE_INDEXES,
-      },
-    },
-  };
+const dbCache = new Map<string, CachedDb>();
+
+function getDefaultSchema(storeNames: string[]): SchemaDef {
+  const stores: SchemaDef["stores"] = {};
+  for (const name of storeNames) {
+    stores[name] = {
+      keyPath: DEFAULT_KEY_PATH,
+      indexes: DATE_INDEXES,
+    };
+  }
+  return { stores };
 }
 
 export async function getDb(
   dbName: string,
   storeName: string
 ): Promise<IDBPDatabase<unknown>> {
-  let db = dbCache.get(dbName);
-  if (db != null) return db;
-  const schema = getDefaultSchema(storeName);
-  db = await initDb(dbName, { schema });
-  dbCache.set(dbName, db);
+  const entry = dbCache.get(dbName);
+  if (entry != null && entry.storeNames.has(storeName)) {
+    return entry.db;
+  }
+  const existingStores = entry != null ? [...entry.storeNames] : [];
+  if (entry != null) {
+    entry.db.close();
+    dbCache.delete(dbName);
+  }
+  const allStores = existingStores.includes(storeName)
+    ? existingStores
+    : [...existingStores, storeName];
+  const schema = getDefaultSchema(allStores);
+  const db = await initDb(dbName, { schema });
+  dbCache.set(dbName, {
+    db,
+    storeNames: new Set(allStores),
+  });
   return db;
 }
 
@@ -46,6 +65,8 @@ export function setExpiryFields(
 
 export interface ExecuteSetOptions {
   ttlMs?: number;
+  /** Max entries before eviction. Default: 1000. */
+  maxCount?: number;
 }
 
 export async function executeSet(
@@ -55,24 +76,26 @@ export async function executeSet(
   options?: ExecuteSetOptions
 ): Promise<void> {
   const db = await getDb(dbName, storeName);
-  setExpiryFields(value, options?.ttlMs ?? DEFAULT_TTL_MS);
+  const toStore = { ...value };
+  setExpiryFields(toStore, options?.ttlMs ?? DEFAULT_TTL_MS);
   await cleanOldEntries(db, storeName, {
     dateKey: "expiresAt",
     before: Date.now(),
   });
+  const maxCount = options?.maxCount ?? DEFAULT_MAX_COUNT;
   const count = await db.count(storeName);
-  if (count >= DEFAULT_MAX_COUNT) {
+  if (count >= maxCount) {
     await cleanWhenTooLarge(db, storeName, {
       dateKey: "createdAt",
-      maxCount: DEFAULT_MAX_COUNT,
+      maxCount,
     });
   }
-  await db.put(storeName, value);
+  await db.put(storeName, toStore);
   const countAfter = await db.count(storeName);
-  if (countAfter > DEFAULT_MAX_COUNT) {
+  if (countAfter > maxCount) {
     await cleanWhenTooLarge(db, storeName, {
       dateKey: "createdAt",
-      maxCount: DEFAULT_MAX_COUNT,
+      maxCount,
     });
   }
 }
@@ -93,8 +116,15 @@ export async function executeUpdate(
   value: Record<string, unknown>
 ): Promise<void> {
   const db = await getDb(dbName, storeName);
-  const withKey = { ...value, [DEFAULT_KEY_PATH]: key };
-  await db.put(storeName, withKey);
+  const existing = (await db.get(storeName, key)) as
+    | Record<string, unknown>
+    | undefined;
+  const merged = {
+    ...(existing ?? {}),
+    ...value,
+    [DEFAULT_KEY_PATH]: key,
+  };
+  await db.put(storeName, merged);
 }
 
 export async function executeDelete(
@@ -107,9 +137,9 @@ export async function executeDelete(
 }
 
 export async function executeDeleteDb(dbName: string): Promise<void> {
-  const db = dbCache.get(dbName);
-  if (db != null) {
-    db.close();
+  const entry = dbCache.get(dbName);
+  if (entry != null) {
+    entry.db.close();
     dbCache.delete(dbName);
   }
   await deleteDB(dbName);

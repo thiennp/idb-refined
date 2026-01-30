@@ -13,6 +13,8 @@ export interface IdbRefinedOptions {
   storeName?: string;
   /** Default TTL in ms for values without `expiresAt`. Default: 3600000 (1 hour). */
   ttlMs?: number;
+  /** Max entries before eviction. Default: 1000. */
+  maxCount?: number;
 }
 
 /** Stored value must have `id`. `createdAt` and `expiresAt` are set by the client if missing. */
@@ -32,12 +34,14 @@ import type { WorkerMessage, WorkerResponse } from "./workerProtocol.js";
 function mainThreadClient<T extends StoredValue>(
   dbName: string,
   storeName: string,
-  ttlMs: number | undefined
+  ttlMs: number | undefined,
+  maxCount: number | undefined
 ): IdbRefinedClient<T> {
   return {
     async set(value: T) {
       await execSet(dbName, storeName, value as Record<string, unknown>, {
         ttlMs,
+        maxCount,
       });
     },
     async get(key: IDBValidKey) {
@@ -69,11 +73,11 @@ export async function createIdb<T extends StoredValue = StoredValue>(
   options: IdbRefinedOptions,
   workerUrl?: string | URL
 ): Promise<IdbRefinedClient<T>> {
-  const { dbName, ttlMs } = options;
+  const { dbName, ttlMs, maxCount } = options;
   const storeName = options.storeName ?? DEFAULT_STORE_NAME;
 
   if (typeof Worker === "undefined") {
-    return mainThreadClient<T>(dbName, storeName, ttlMs);
+    return mainThreadClient<T>(dbName, storeName, ttlMs, maxCount);
   }
 
   const url =
@@ -93,6 +97,11 @@ export async function createIdb<T extends StoredValue = StoredValue>(
     { resolve: (v: unknown) => void; reject: (e: Error) => void }
   >();
   let nextId = 0;
+  const workerUnavailableError = new Error(
+    "Worker unavailable; create a new client with createIdb()."
+  );
+  let workerDead = false;
+
   worker.onmessage = (e: MessageEvent<WorkerResponse>) => {
     const data = e.data;
     const p = pending.get(data.id);
@@ -103,6 +112,7 @@ export async function createIdb<T extends StoredValue = StoredValue>(
     }
   };
   worker.onerror = (ev) => {
+    workerDead = true;
     for (const [, p] of pending)
       p.reject(ev.error ?? new Error("Worker error"));
     pending.clear();
@@ -113,12 +123,16 @@ export async function createIdb<T extends StoredValue = StoredValue>(
     payload?: unknown
   ): Promise<R> =>
     new Promise((resolve, reject) => {
+      if (workerDead) {
+        reject(workerUnavailableError);
+        return;
+      }
       const id = nextId++;
       pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
       worker.postMessage({ type, id, payload } as WorkerMessage);
     });
 
-  await send<void>("init", { dbName, storeName, ttlMs });
+  await send<void>("init", { dbName, storeName, ttlMs, maxCount });
 
   return {
     async set(value: T) {
