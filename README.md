@@ -10,6 +10,8 @@ pnpm add idb-refined
 npm install idb-refined
 ```
 
+**Try the example:** [Live](https://thiennp.github.io/idb-refined/) · [Source](example/)
+
 ## When to use
 
 Good for: key-value cache with TTL and eviction, offline storage, simple app storage by id. Not for: complex multi-index queries or raw IDB transactions—use [idb](https://www.npmjs.com/package/idb) or native IndexedDB instead.
