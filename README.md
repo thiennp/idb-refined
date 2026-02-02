@@ -89,6 +89,10 @@ const client = await createIdb(
 
 **Playground:** To publish the example to GitHub Pages, enable Pages in the repo (Settings → Pages → Source: **GitHub Actions**). Each push to `main` will build and deploy the example to `https://<username>.github.io/idb-refined/`.
 
+## Feedback
+
+We’d love to hear from you—bug reports, ideas, or questions. Reach out via [email](mailto:nguyenphongthien@gmail.com), [LinkedIn](https://linkedin.com/in/thiennp), or [GitHub issues/discussions](https://github.com/thiennp/idb-refined).
+
 ## License
 
 MIT
