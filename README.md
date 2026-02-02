@@ -28,7 +28,7 @@ Good for: key-value cache with TTL and eviction, offline storage, simple app sto
 | **delete(key)** | Delete an entry by key. |
 | **deleteDb()** | Close the DB and delete it from disk. |
 
-For details, see **[Advanced documentation](docs/advanced.md)**. Run the **[example](example/)** in the browser (see `example/README.md`). The `idb-refined/worker` export is a script entry for the Worker constructor only (no types).
+For details, see **[Advanced documentation](docs/advanced.md)**. Run the **[example](example/)** locally (`pnpm example`) or try the **[live playground](https://thiennp.github.io/idb-refined/)** (deployed from `main` via [GitHub Actions](.github/workflows/deploy-example.yml)). The `idb-refined/worker` export is a script entry for the Worker constructor only (no types).
 
 ## Example
 
@@ -84,6 +84,8 @@ const client = await createIdb(
 3. Pushing a tag matching `v*` triggers the [Publish to npm](.github/workflows/publish.yml) workflow.
 
 **Required:** Add an `NPM_TOKEN` secret in the repo (Settings → Secrets and variables → Actions).
+
+**Playground:** To publish the example to GitHub Pages, enable Pages in the repo (Settings → Pages → Source: **GitHub Actions**). Each push to `main` will build and deploy the example to `https://<username>.github.io/idb-refined/`.
 
 ## License
 
