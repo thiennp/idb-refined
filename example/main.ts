@@ -12,47 +12,51 @@ type User = {
   expiresAt?: number;
 };
 
+function log(msg: string): void {
+  const out = document.getElementById("out");
+  if (out) out.textContent += msg + "\n";
+  console.log(msg);
+}
+
 async function run(): Promise<void> {
   const dbName = "idb-refined-example";
   const client = await createIdb<User>({ dbName });
 
-  console.log("--- set ---");
+  log("--- set ---");
   await client.set({ id: "1", name: "Alice", role: "admin" });
   await client.set({ id: "2", name: "Bob", role: "user" });
-  console.log("Stored two items.");
+  log("Stored two items.");
 
-  console.log("--- get ---");
+  log("--- get ---");
   const one = await client.get("1");
-  console.log("get('1'):", one);
+  log("get('1'): " + JSON.stringify(one));
 
-  console.log("--- getAll / keys / getMany ---");
+  log("--- getAll / keys / getMany ---");
   const all = await client.getAll();
   const keyList = await client.keys();
   const many = await client.getMany(["1", "2"]);
-  console.log("getAll():", all.length, "items; keys():", keyList);
-  console.log("getMany(['1','2']):", many);
+  log("getAll(): " + all.length + " items; keys(): " + JSON.stringify(keyList));
+  log("getMany(['1','2']): " + JSON.stringify(many));
 
-  console.log("--- update ---");
+  log("--- update ---");
   await client.update("1", { name: "Alice Updated" });
   const updated = await client.get("1");
-  console.log("After update get('1'):", updated);
-  // update() merges: other fields (role, createdAt, expiresAt) are preserved
+  log("After update get('1'): " + JSON.stringify(updated));
   if (updated) {
-    console.log(
-      "  (merge preserved role:",
-      updated.role,
-      "; id/name/createdAt/expiresAt all present)"
-    );
+    log("  (merge preserved role: " + updated.role + ")");
   }
 
-  console.log("--- delete ---");
+  log("--- delete ---");
   await client.delete("2");
   const two = await client.get("2");
-  console.log("get('2') after delete:", two);
+  log("get('2') after delete: " + JSON.stringify(two));
 
-  console.log("--- deleteDb ---");
+  log("--- deleteDb ---");
   await client.deleteDb();
-  console.log("Database removed. Done.");
+  log("Database removed. Done.");
 }
 
-run().catch(console.error);
+run().catch((err) => {
+  log("Error: " + String(err));
+  console.error(err);
+});
